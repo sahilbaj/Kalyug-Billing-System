@@ -1,0 +1,15 @@
+{
+  "restaurant_name": "Kalyug",
+  "thermal_printer": {
+    "enabled": true,
+    "printer_name": "default",
+    "paper_width": 58,
+    "char_per_line": 32
+  },
+  "receipt_format": {
+    "show_header": true,
+    "show_footer": true,
+    "show_gst": true,
+    "show_datetime": true
+  }
+}

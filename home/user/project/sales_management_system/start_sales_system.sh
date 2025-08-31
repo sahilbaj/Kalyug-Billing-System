@@ -9,16 +9,16 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
 # Check if Python is installed
-if ! command -v python3 &> /dev/null; then
-    if ! command -v python &> /dev/null; then
-        echo "Error: Python is not installed or not in PATH"
-        echo "Please install Python 3.7 or higher"
-        exit 1
-    else
-        PYTHON_CMD="python"
-    fi
-else
+if command -v python3 &> /dev/null; then
     PYTHON_CMD="python3"
+elif command -v py &> /dev/null; then
+    PYTHON_CMD="py"
+elif command -v python &> /dev/null; then
+    PYTHON_CMD="python"
+else
+    echo "Error: Python is not installed or not in PATH"
+    echo "Please install Python 3.7 or higher"
+    exit 1
 fi
 
 # Check Python version
