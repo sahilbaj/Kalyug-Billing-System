@@ -13,6 +13,12 @@ class ReceiptManager:
     
     def __init__(self):
         self.default_thermal_printer = None
+        # Thermal printer settings for 80mm paper
+        self.thermal_settings = {
+            'char_width': 40,  # Characters per line for 80mm thermal printer
+            'paper_width_mm': 80,
+            'font_width_mm': 1.67,  # Approximate character width in mm
+        }
 
     def _print_to_windows_thermal_printer(self, content):
         """Print to Windows installed thermal printer with user selection and default saving"""
@@ -62,6 +68,111 @@ class ReceiptManager:
         except Exception as e:
             print(f"Error printing to Windows thermal printer: {e}")
             return False
+
+    def _ask_save_as_default(self, printer_name):
+        """Ask user if they want to save the selected printer as default"""
+        try:
+            dialog = tk.Toplevel()
+            dialog.title("Save Default Printer")
+            dialog.geometry("450x300")
+            dialog.resizable(False, False)
+            dialog.grab_set()
+            dialog.configure(bg='#f8f9fa')
+
+            self._center_window(dialog, 450, 300)
+
+            # Main frame
+            main_frame = tk.Frame(dialog, bg='#f8f9fa', padx=20, pady=20)
+            main_frame.pack(fill=tk.BOTH, expand=True)
+
+            # Header
+            header_frame = tk.Frame(main_frame, bg='#17a2b8', relief='flat', pady=10)
+            header_frame.pack(fill=tk.X, pady=(0, 15))
+
+            tk.Label(header_frame, text="💾 Save Default Printer",
+                     font=('Arial', 14, 'bold'), fg='white', bg='#17a2b8').pack()
+
+            # Message
+            message_frame = tk.Frame(main_frame, bg='white', relief='solid', bd=1, padx=15, pady=15)
+            message_frame.pack(fill=tk.X, pady=(0, 15))
+
+            tk.Label(message_frame, text="Do you want to save this printer as default?",
+                     font=('Arial', 11, 'bold'), bg='white').pack()
+
+            tk.Label(message_frame, text=f"Printer: {printer_name}",
+                     font=('Arial', 10), fg='#007bff', bg='white').pack(pady=(5, 0))
+
+            tk.Label(message_frame, text="This will skip printer selection in future prints.",
+                     font=('Arial', 9), fg='#6c757d', bg='white').pack(pady=(5, 0))
+
+            # Buttons
+            button_frame = tk.Frame(main_frame, bg='#f8f9fa')
+            button_frame.pack(fill=tk.X)
+
+            result = [False]  # Use list to modify from inner functions
+
+            def save_default():
+                result[0] = True
+                dialog.destroy()
+
+            def skip():
+                result[0] = False
+                dialog.destroy()
+
+            # Yes button
+            yes_btn = tk.Button(button_frame, text="✅ Yes, Save as Default",
+                                command=save_default,
+                                bg='#28a745', fg='white', font=('Arial', 10, 'bold'),
+                                relief='flat', padx=15, pady=8, cursor='hand2')
+            yes_btn.pack(side=tk.LEFT, padx=(0, 10))
+
+            # No button
+            no_btn = tk.Button(button_frame, text="❌ No, Just Print Once",
+                               command=skip,
+                               bg='#6c757d', fg='white', font=('Arial', 10, 'bold'),
+                               relief='flat', padx=15, pady=8, cursor='hand2')
+            no_btn.pack(side=tk.LEFT)
+
+            # Focus on Yes button
+            yes_btn.focus_set()
+
+            # Bind Enter key to Yes
+            dialog.bind('<Return>', lambda e: save_default())
+            dialog.bind('<Escape>', lambda e: skip())
+
+            dialog.wait_window()
+            return result[0]
+
+        except Exception as e:
+            print(f"Error in save default dialog: {e}")
+            return False
+
+    def _save_printer_config(self, printer_name):
+        """Save printer configuration to file"""
+        try:
+            import json
+            import os
+
+            # Create config directory if it doesn't exist
+            config_dir = os.path.join(os.path.expanduser("~"), ".ananda_bakery")
+            if not os.path.exists(config_dir):
+                os.makedirs(config_dir)
+
+            config_file = os.path.join(config_dir, "printer_config.json")
+
+            config = {
+                "default_thermal_printer": printer_name,
+                "saved_date": datetime.now().isoformat(),
+                "version": "1.0"
+            }
+
+            with open(config_file, 'w') as f:
+                json.dump(config, f, indent=2)
+
+            print(f"✓ Printer configuration saved to {config_file}")
+
+        except Exception as e:
+            print(f"Error saving printer config: {e}")
 
     def _verify_printer_available(self, printer_name):
         """Verify if the saved default printer is still available"""
@@ -206,38 +317,21 @@ class ReceiptManager:
     def generate_receipt_text(self, table_data: dict) -> str:
         """Generate receipt text from table data"""
         try:
-            receipt_lines = []
-            char_per_line = self.config.get("thermal_printer", {}).get("char_per_line", 32)
-            
-            # Header
-            if self.config.get("receipt_format", {}).get("show_header", True):
-                restaurant_name = self.config.get("restaurant_name", "Restaurant")
-                receipt_lines.append(self.center_text(restaurant_name, char_per_line))
-                receipt_lines.append(self.center_text("=" * min(len(restaurant_name), char_per_line), char_per_line))
 
-                address = self.config.get("address", "")
-                if address:
-                    receipt_lines.append(self.center_text(address, char_per_line))
+            char_width = self.thermal_settings['char_width']
+            content = ""
+            # Header section - EXACT formatting
+            content += "KALYUG CAFE\n"
+            content += "\n"
 
-                phone = self.config.get("phone", "")
-                if phone:
-                    receipt_lines.append(self.center_text(f"Ph: {phone}", char_per_line))
-
-                gst_number = self.config.get("gst_number", "")
-                if gst_number and self.config.get("receipt_format", {}).get("show_gst", True):
-                    receipt_lines.append(self.center_text(f"GST: {gst_number}", char_per_line))
-
-                receipt_lines.append("")
-
-            # Date and time
-            if self.config.get("receipt_format", {}).get("show_datetime", True):
-                now = datetime.now()
-                receipt_lines.append(f"Date: {now.strftime('%d/%m/%Y')} Time: {now.strftime('%H:%M:%S')}")
-                receipt_lines.append("")
+            now = datetime.now()
+            content +=f"Date: {now.strftime('%d/%m/%Y')}          Time: {now.strftime('%H:%M:%S')}\n"
+            content += "\n"
 
             # Items header
-            receipt_lines.append("Item                 Qty  Amount")
-            receipt_lines.append("-" * char_per_line)
+            content += "Item                          Qty  Amount\n"
+            # Separator line
+            content += "-" * char_width + "\n"
 
             # Items
             total_amount = 0
@@ -249,28 +343,25 @@ class ReceiptManager:
                 total_amount += item_total
 
                 # Format item line
-                name_width = char_per_line - 10  # Reserve space for qty and amount
+                name_width = char_width - 11  # Reserve space for qty and amount
                 if len(item_name) > name_width:
                     item_name = item_name[:name_width-3] + "..."
 
                 qty_str = f"{quantity:>3}"
-                amount_str = f"{item_total:>6.0f}"
+                amount_str = f"{item_total:>8.0f}"
 
-                item_line = f"{item_name:<{name_width}}{qty_str}{amount_str}"
-                receipt_lines.append(item_line)
+                content += f"{item_name:<{name_width}}{qty_str}{amount_str}\n"
 
             # Total
-            receipt_lines.append("-" * char_per_line)
-            receipt_lines.append(f"{'TOTAL:':<{char_per_line-8}}{total_amount:>8.2f}")
-            receipt_lines.append("=" * char_per_line)
+            content += "-" * char_width + "\n"
+            content +=f"{'TOTAL:':<{char_width-8}}{total_amount:>8.2f}\n"
+            content +="=" * char_width + "\n"
 
-            # Footer
-            if self.config.get("receipt_format", {}).get("show_footer", True):
-                receipt_lines.append("")
-                receipt_lines.append(self.center_text("Thank You!", char_per_line))
-                receipt_lines.append(self.center_text("Visit Again!", char_per_line))
+            content += "\n"
+            content += "Thank You!\n"
+            content += "Visit Again!\n"
 
-            return "\n".join(receipt_lines)
+            return content
 
         except Exception as e:
             print(f"Error generating receipt text: {e}")
@@ -359,7 +450,7 @@ class ReceiptManager:
                                     "🖨️ Receipt printed successfully!")
             else:
                 # Fallback to default system printer
-                fallback_success = self._print_to_system_printer(receipt_text)
+                fallback_success = self._print_to_windows_thermal_printer(receipt_text)
                 if fallback_success:
                     messagebox.showinfo("Print Success",
                                         "🖨️ Receipt printed to system printer!")
@@ -443,7 +534,7 @@ class ReceiptManager:
 
             try:
                 # Start document with RAW data type (important for thermal printers)
-                doc_info = ("Ananda Bakery Receipt", None, "RAW")
+                doc_info = ("Kalyug Cafe Receipt", None, "RAW")
                 job_id = win32print.StartDocPrinter(printer_handle, 1, doc_info)
 
                 try:
@@ -481,6 +572,75 @@ class ReceiptManager:
         except Exception as e:
             print(f"Error with win32print: {e}")
             return False
+
+    def _format_for_thermal_printer(self, content):
+        """Format content for thermal printer with proper ESC/POS commands"""
+        try:
+            raw_data = b''
+
+            # Initialize printer - clear any previous state
+            raw_data += b'\x1b@'  # ESC @ - Initialize printer
+            raw_data += b'\x1bt\x00'  # Select character code table (PC437)
+
+            lines = content.split('\n')
+
+            for line in lines:
+                if line.startswith('✂'):  # Skip cut indicators
+                    continue
+
+                line_stripped = line.strip()
+
+                # Apply formatting based on content
+                if line_stripped == "KALYUG CAFE":
+                    raw_data += b'\x1ba\x01'  # Center align
+                    raw_data += b'\x1bE\x01'  # Bold on
+                    raw_data += b'\x1b!\x11'  # Double height and width
+                    raw_data += line_stripped.encode('utf-8', errors='ignore') + b'\n'
+                    raw_data += b'\x1b!\x00'  # Normal size
+                    raw_data += b'\x1bE\x00'  # Bold off
+                    raw_data += b'\x1ba\x00'  # Left align
+
+                elif line_stripped == "SALES RECEIPT":
+                    raw_data += b'\x1ba\x01'  # Center align
+                    raw_data += b'\x1bE\x01'  # Bold on
+                    raw_data += b'\x1b!\x10'  # Double width
+                    raw_data += line_stripped.encode('utf-8', errors='ignore') + b'\n'
+                    raw_data += b'\x1b!\x00'  # Normal size
+                    raw_data += b'\x1bE\x00'  # Bold off
+                    raw_data += b'\x1ba\x00'  # Left align
+                    raw_data += b'\n'  # Extra line after receipt title
+
+                elif "Gross Total" in line:
+                    raw_data += b'\x1bE\x01'  # Bold on
+                    raw_data += line.encode('utf-8', errors='ignore') + b'\n'
+                    raw_data += b'\x1bE\x00'  # Bold off
+
+                elif line_stripped == "Thank You!":
+                    raw_data += b'\x1ba\x01'  # Center align
+                    raw_data += line_stripped.encode('utf-8', errors='ignore') + b'\n'
+                    raw_data += b'\x1ba\x00'  # Left align
+                elif line_stripped == "Visit Again!":
+                    raw_data += b'\x1ba\x01'  # Center align
+                    raw_data += line_stripped.encode('utf-8', errors='ignore') + b'\n'
+                    raw_data += b'\x1ba\x00'  # Left align
+                    # CRITICAL FIX: Add sufficient spacing after "Have a Nice day"
+                    raw_data += b'\n' * 4  # Add 4 extra line feeds to ensure text is printed
+                else:
+                    # Regular lines (items, totals, separators)
+                    raw_data += line.encode('utf-8', errors='ignore') + b'\n'
+
+            # Optional: Add a form feed to ensure all content is processed
+            raw_data += b'\x0c'  # Form feed
+
+            # Final cut command
+            raw_data += b'\x1dV\x00'  # Full cut
+
+            print(f"Generated thermal data: {len(raw_data)} bytes")
+            return raw_data
+
+        except Exception as e:
+            print(f"Error formatting for thermal printer: {e}")
+            return content.encode('utf-8', errors='ignore')
 
     def _print_with_system_command(self, content, printer_name):
         """Print using system command with thermal printer optimization"""

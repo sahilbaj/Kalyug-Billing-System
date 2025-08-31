@@ -1342,7 +1342,7 @@ class MainWindow:
                 padx = (button_spacing, 0) if j > 0 else (0, 0)
                 btn.pack(side=tk.LEFT, padx=padx, pady=2)
 
-                tooltip_text = f"{product['display_name']}\nPrice: ₹{product['amount']:.2f}"
+                tooltip_text = f"{product['name']}\nPrice: ₹{product['amount']:.2f}"
                 self._create_tooltip(btn, tooltip_text)
 
     def _optimize_button_layout(self, products: list, available_width: int,
@@ -1558,7 +1558,7 @@ class MainWindow:
             return
 
         try:
-            item_name = product['display_name']
+            item_name = product['name']
             price = float(product['amount'])
             quantity = 1  # Default quantity
 
