@@ -234,6 +234,9 @@ class MainWindow:
 
         self.items_tree.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
 
+        # Add this line to make the tree focusable
+        self.items_tree.bind('<Button-1>', lambda e: self.items_tree.focus_set())
+
         # Scrollbar for items
         items_scrollbar = ttk.Scrollbar(items_container, orient=tk.VERTICAL, command=self.items_tree.yview)
         items_scrollbar.grid(row=0, column=1, sticky=(tk.N, tk.S))
@@ -279,8 +282,19 @@ class MainWindow:
                             cleared_count += 1
 
             self.status_label.config(text=f"🧹 Cleared {cleared_count} finalized tables")
+
+            # Force refresh all data and UI components
             self.refresh_all_data()
             self.update_table_button_colors()
+
+            # If current table was cleared, refresh its details
+            if self.current_table_name:
+                current_table = self.controller.get_table(self.current_table_name)
+                if not current_table or not current_table.items:
+                    self.refresh_table_details()
+
+            # Trigger observer pattern to ensure all UI updates
+            self.on_data_changed()
 
     def save_to_daily_sales(self, table) -> None:
         """Save finalized table data to daily sales records"""
@@ -389,10 +403,11 @@ class MainWindow:
         self.update_table_button_colors()
         self.status_label.config(text=f"📋 Selected {table_name}")
 
-    def clear_selected_table(self) -> None:
+    def clear_selected_table(self, auto_clear: bool = False) -> None:
         """Clear the selected table (make it available for reuse)"""
         if not self.current_table_name:
-            messagebox.showwarning("Warning", "Please select a table to clear!")
+            if not auto_clear:  # Only show warning if not auto-clearing
+                messagebox.showwarning("Warning", "Please select a table to clear!")
             return
 
         table = self.controller.get_table(self.current_table_name)
@@ -406,7 +421,8 @@ class MainWindow:
         if table.items and not table.is_active:
             self.save_to_daily_sales(table)
 
-        if table.is_active and table.items:
+        # Only ask for confirmation if it's a manual clear and table is active with items
+        if table.is_active and table.items and not auto_clear:
             if not messagebox.askyesno("Confirm", f"Clear {self.current_table_name}? This will remove all items without finalizing the bill."):
                 return
 
@@ -418,11 +434,18 @@ class MainWindow:
             success = self.controller.delete_table(self.current_table_name)
 
         if success:
-            self.status_label.config(text=f"🧹 Cleared {self.current_table_name}")
+            if auto_clear:
+                self.status_label.config(text=f"✅ {self.current_table_name} cleared and ready for reuse")
+            else:
+                self.status_label.config(text=f"🧹 Cleared {self.current_table_name}")
+            # Force refresh the table details immediately
             self.refresh_table_details()
             self.update_table_button_colors()
+            # Also trigger the observer pattern to ensure all UI updates
+            self.on_data_changed()
         else:
-            messagebox.showerror("Error", "Failed to clear table!")
+            if not auto_clear:  # Only show error if not auto-clearing
+                messagebox.showerror("Error", "Failed to clear table!")
 
     def update_table_button_colors(self) -> None:
         """Update table button colors based on their status"""
@@ -435,14 +458,14 @@ class MainWindow:
                 # Empty/Available table - Green
                 btn.configure(style='Success.TButton')
                 btn.configure(text=f"T{table_num}\n🟢")
-            elif table.is_active:
-                # Active table with items - Blue
-                btn.configure(style='Primary.TButton')
-                btn.configure(text=f"T{table_num}\n🔵({len(table.items)})")
-            else:
-                # Finalized table - Orange/Warning
+            elif table.is_active and table.items:
+                # Active table with items - Yellow
                 btn.configure(style='Warning.TButton')
-                btn.configure(text=f"T{table_num}\n🟠✓")
+                btn.configure(text=f"T{table_num}\n🟡({len(table.items)})")
+            elif not table.is_active:
+                # Finalized table - Orange/Red
+                btn.configure(style='Danger.TButton')
+                btn.configure(text=f"T{table_num}\n🔴✓")
 
     def setup_table_details_panel(self, parent: ttk.Frame) -> None:
         """Setup the table item management panel"""
@@ -574,6 +597,184 @@ class MainWindow:
         self.root.bind('<Control-s>', lambda e: self.controller.save_data())
         self.root.bind('<F5>', lambda e: self.refresh_all_data())
 
+        # Add Delete key binding for removing selected item from tree
+        self.items_tree.bind('<Delete>', self.on_delete_key_pressed)
+        self.items_tree.bind('<BackSpace>', self.on_delete_key_pressed)  # Also support Backspace
+
+        # Add double-click to edit quantity
+        self.items_tree.bind('<Double-1>', self.on_item_double_click)
+
+        # Add Enter key to edit quantity
+        self.items_tree.bind('<Return>', lambda e: self.edit_item_quantity_dialog())
+
+    def on_item_double_click(self, event) -> None:
+        """Handle double-click on items tree to edit quantity"""
+        try:
+            # Check if an item is selected
+            selection = self.items_tree.selection()
+            if selection:
+                self.edit_item_quantity_dialog()
+        except Exception as e:
+            print(f"Error handling double-click: {e}")
+
+    def edit_item_quantity_dialog(self) -> None:
+        """Show dialog to edit item quantity"""
+        if not self.current_table_name:
+            messagebox.showwarning("Warning", "No table selected!")
+            return
+
+        selection = self.items_tree.selection()
+        if not selection:
+            messagebox.showwarning("Warning", "Please select an item to edit!")
+            return
+
+        try:
+            # Get current item details
+            item_values = self.items_tree.item(selection[0], "values")
+            if not item_values or len(item_values) < 4:
+                messagebox.showerror("Error", "Invalid item selection!")
+                return
+
+            item_name = item_values[0]
+            current_qty = int(item_values[1])
+            item_price = item_values[2].replace('₹', '')
+
+            # Create quantity edit dialog
+            qty_window = tk.Toplevel(self.root)
+            qty_window.title("✏️ Edit Quantity")
+            qty_window.geometry("350x350")
+            qty_window.configure(bg='#1e1e1e')
+            qty_window.resizable(False, False)
+
+            # Center the window
+            qty_window.transient(self.root)
+            qty_window.grab_set()
+
+            # Main frame
+            main_frame = ttk.Frame(qty_window, padding="20")
+            main_frame.pack(fill=tk.BOTH, expand=True)
+
+            # Title
+            ttk.Label(main_frame, text="✏️ Edit Item Quantity",
+                      style='Title.TLabel').pack(pady=(0, 15))
+
+            # Item info
+            info_frame = ttk.LabelFrame(main_frame, text="Item Details", padding="10")
+            info_frame.pack(fill=tk.X, pady=(0, 15))
+
+            ttk.Label(info_frame, text=f"Item: {item_name}",
+                      style='TLabel').pack(anchor=tk.W, pady=2)
+            ttk.Label(info_frame, text=f"Price: {item_price}",
+                      style='TLabel').pack(anchor=tk.W, pady=2)
+            ttk.Label(info_frame, text=f"Current Quantity: {current_qty}",
+                      style='TLabel').pack(anchor=tk.W, pady=2)
+
+            # Quantity input
+            qty_frame = ttk.LabelFrame(main_frame, text="New Quantity", padding="10")
+            qty_frame.pack(fill=tk.X, pady=(0, 15))
+
+            qty_input_frame = ttk.Frame(qty_frame)
+            qty_input_frame.pack(fill=tk.X)
+
+            # Quantity spinbox with current value
+            qty_var = tk.StringVar(value=str(current_qty))
+            qty_spinbox = ttk.Spinbox(qty_input_frame, from_=0, to=99, width=10,
+                                      textvariable=qty_var, font=('Segoe UI', 12))
+            qty_spinbox.pack(side=tk.LEFT, padx=(0, 10))
+            qty_spinbox.focus()
+            qty_spinbox.select_range(0, tk.END)
+
+            # Quick buttons for common operations
+            quick_frame = ttk.Frame(qty_input_frame)
+            quick_frame.pack(side=tk.LEFT, fill=tk.X, expand=True)
+
+            ttk.Button(quick_frame, text="-1", width=4,
+                       command=lambda: self.adjust_quantity(qty_var, -1)).pack(side=tk.LEFT, padx=2)
+            ttk.Button(quick_frame, text="+1", width=4,
+                       command=lambda: self.adjust_quantity(qty_var, 1)).pack(side=tk.LEFT, padx=2)
+            ttk.Button(quick_frame, text="+5", width=4,
+                       command=lambda: self.adjust_quantity(qty_var, 5)).pack(side=tk.LEFT, padx=2)
+
+            # Result variable
+            result = {'confirmed': False, 'new_qty': current_qty}
+
+            def confirm_edit():
+                try:
+                    new_qty = int(qty_var.get())
+                    if new_qty < 0:
+                        messagebox.showerror("Invalid Quantity", "Quantity cannot be negative!")
+                        return
+
+                    result['confirmed'] = True
+                    result['new_qty'] = new_qty
+                    qty_window.destroy()
+
+                except ValueError:
+                    messagebox.showerror("Invalid Input", "Please enter a valid number!")
+
+            def cancel_edit():
+                qty_window.destroy()
+
+            # Buttons frame
+            buttons_frame = ttk.Frame(main_frame)
+            buttons_frame.pack(fill=tk.X)
+
+            ttk.Button(buttons_frame, text="✅ Update Quantity",
+                       style='Success.TButton', command=confirm_edit).pack(side=tk.LEFT, padx=(0, 10))
+            ttk.Button(buttons_frame, text="❌ Cancel",
+                       style='Danger.TButton', command=cancel_edit).pack(side=tk.LEFT)
+
+            # Bind Enter key to confirm
+            qty_spinbox.bind('<Return>', lambda e: confirm_edit())
+            qty_window.bind('<Escape>', lambda e: cancel_edit())
+
+            # Wait for dialog to close
+            qty_window.wait_window()
+
+            # Process result
+            if result['confirmed']:
+                item_index = self.items_tree.index(selection[0])
+                new_qty = result['new_qty']
+
+                if new_qty == 0:
+                    # If quantity is 0, ask to remove item
+                    if messagebox.askyesno("Remove Item", f"Quantity is 0. Remove {item_name} from the table?"):
+                        if self.controller.remove_item_from_table(self.current_table_name, item_index):
+                            self.status_label.config(text=f"❌ Removed {item_name}")
+                        else:
+                            messagebox.showerror("Error", "Failed to remove item!")
+                else:
+                    # Update quantity
+                    if self.controller.update_item_quantity(self.current_table_name, item_index, new_qty):
+                        self.status_label.config(text=f"🔄 Updated {item_name} quantity to {new_qty}")
+                    else:
+                        messagebox.showerror("Error", "Failed to update quantity!")
+
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to edit quantity: {e}")
+
+    def adjust_quantity(self, qty_var: tk.StringVar, adjustment: int) -> None:
+        """Adjust quantity by the given amount"""
+        try:
+            current_qty = int(qty_var.get())
+            new_qty = max(0, current_qty + adjustment)  # Don't go below 0
+            qty_var.set(str(new_qty))
+        except ValueError:
+            qty_var.set("1")  # Reset to 1 if invalid
+
+    def on_delete_key_pressed(self, event) -> None:
+        """Handle Delete/Backspace key press on items tree"""
+        try:
+            # Check if items tree has focus and an item is selected
+            if self.root.focus_get() == self.items_tree:
+                selection = self.items_tree.selection()
+                if selection:
+                    # Call the existing remove function
+                    self.remove_selected_item_simple()
+            
+        except Exception as e:
+            print(f"Error handling delete key: {e}")
+
     def show_item_context_menu(self, event) -> None:
         """Show context menu for items tree"""
         try:
@@ -581,13 +782,14 @@ class MainWindow:
             item = self.items_tree.identify_row(event.y)
             if item:
                 self.items_tree.selection_set(item)
-                
+
                 # Create context menu
                 context_menu = tk.Menu(self.root, tearoff=0)
-                context_menu.add_command(label="❌ Remove Item", command=self.remove_selected_item_simple)
+                context_menu.add_command(label="✏️ Edit Quantity", command=self.edit_item_quantity_dialog)
                 context_menu.add_separator()
+                context_menu.add_command(label="❌ Remove Item", command=self.remove_selected_item_simple)
                 context_menu.add_command(label="➕ Add Same Item", command=self.add_same_item)
-                
+
                 # Show menu
                 context_menu.tk_popup(event.x_root, event.y_root)
         except Exception as e:
@@ -804,30 +1006,38 @@ class MainWindow:
         """Preview receipt and close options window"""
         options_window.destroy()
         self.receipt_manager.preview_receipt(table_data, self.root)
+        # Automatically clear table after preview
+        self.clear_selected_table(auto_clear=True)
         self.update_table_button_colors()
 
     def print_and_close(self, table_data: dict, options_window: tk.Toplevel) -> None:
         """Print receipt and close options window"""
         options_window.destroy()
         if self.receipt_manager.print_receipt(table_data, self.root):
-            # Ask if user wants to clear table
-            if messagebox.askyesno("Clear Table", "Receipt printed successfully!\n\nClear table for reuse?"):
-                self.clear_selected_table()
+            # Automatically clear table after successful print
+            self.clear_selected_table(auto_clear=True)
+        else:
+            # If print failed, ask user what to do
+            if messagebox.askyesno("Print Failed", "Receipt printing failed!\n\nClear table anyway?"):
+                self.clear_selected_table(auto_clear=True)
         self.update_table_button_colors()
 
     def save_and_close(self, table_data: dict, options_window: tk.Toplevel) -> None:
         """Save receipt and close options window"""
         options_window.destroy()
         if self.receipt_manager.save_receipt(table_data, self.root):
-            # Ask if user wants to clear table
-            if messagebox.askyesno("Clear Table", "Receipt saved successfully!\n\nClear table for reuse?"):
-                self.clear_selected_table()
+            # Automatically clear table after successful save
+            self.clear_selected_table(auto_clear=True)
+        else:
+            # If save failed, ask user what to do
+            if messagebox.askyesno("Save Failed", "Receipt saving failed!\n\nClear table anyway?"):
+                self.clear_selected_table(auto_clear=True)
         self.update_table_button_colors()
 
     def clear_and_close(self, options_window: tk.Toplevel) -> None:
         """Clear table and close options window"""
         options_window.destroy()
-        self.clear_selected_table()
+        self.clear_selected_table(auto_clear=True)
 
     def keep_and_close(self, options_window: tk.Toplevel) -> None:
         """Keep table as finalized and close options window"""
@@ -933,25 +1143,25 @@ class MainWindow:
 
     def refresh_table_details(self) -> None:
         """Refresh the table details display"""
+        # Clear existing items first
+        for item in self.items_tree.get_children():
+            self.items_tree.delete(item)
+
         if not self.current_table_name:
             self.table_info_label.config(text="No table selected")
             self.total_label.config(text="Total: ₹0.00")
-            for item in self.items_tree.get_children():
-                self.items_tree.delete(item)
             return
 
         table = self.controller.get_table(self.current_table_name)
-        if not table:
-            self.table_info_label.config(text="Table not found")
+        if not table or not table.items:
+            # Table is empty or doesn't exist
+            self.table_info_label.config(text=f"{self.current_table_name} - 🟢 Empty")
+            self.total_label.config(text="Total: ₹0.00")
             return
-
+    
         # Update table info
         status = "🟢 Active" if table.is_active else "🔴 Finalized"
         self.table_info_label.config(text=f"{self.current_table_name} - {status}")
-
-        # Clear existing items
-        for item in self.items_tree.get_children():
-            self.items_tree.delete(item)
 
         # Add items with price column
         for item in table.items:
