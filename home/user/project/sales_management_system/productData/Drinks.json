@@ -1,0 +1,44 @@
+{
+  "drinks": [
+    {
+      "name": "Blue Heaven Mojito",
+      "display_name": "BH Mojito",
+      "amount": 40
+    },
+    {
+      "name": "Mint Mojito",
+      "display_name": "Mint Mojito",
+      "amount": 40
+    },
+    {
+      "name": "Water Melon Mojito",
+      "display_name": "Melon Mojito",
+      "amount": 40
+    },
+    {
+      "name": "Cold coffee",
+      "display_name": "Cold coffee",
+      "amount": 50
+    },
+    {
+      "name": "Chocolate Shake",
+      "display_name": "Chocolate Shake",
+      "amount": 50
+    },
+    {
+      "name": "Strawberry Shake",
+      "display_name": "Strawberry Shake",
+      "amount": 50
+    },
+    {
+      "name": "500ml Water Bottle",
+      "display_name": "500ml Water",
+      "amount": 10
+    },
+    {
+      "name": "1L Water Bottle",
+      "display_name": "1L Water",
+      "amount": 20
+    }
+  ]
+}

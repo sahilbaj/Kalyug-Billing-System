@@ -1,0 +1,44 @@
+{
+  "dosa": [
+    {
+      "name": "Plain Dosa",
+      "display_name": "Plain Dosa",
+      "amount": 40
+    },
+    {
+      "name": "Masala Dosa",
+      "display_name": "Masala Dosa",
+      "amount": 50
+    },
+    {
+      "name": "Ginni Dosa",
+      "display_name": "Ginni Dosa",
+      "amount": 70
+    },
+    {
+      "name": "Paper Masala Dosa",
+      "display_name": "Paper Dosa",
+      "amount": 70
+    },
+    {
+      "name": "Maysore Masala Dosa",
+      "display_name": "Maysore Dosa",
+      "amount": 80
+    },
+    {
+      "name": "Paneer Masala Dosa",
+      "display_name": "Paneer Dosa",
+      "amount": 80
+    },
+    {
+      "name": "Chesse Masala Dosa",
+      "display_name": "Chesse Dosa",
+      "amount": 100
+    },
+    {
+      "name": "Schezwan Masala Dosa",
+      "display_name": "Schezwan Dosa",
+      "amount": 70
+    }
+  ]
+}

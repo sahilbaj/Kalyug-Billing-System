@@ -1,0 +1,29 @@
+{
+  "sandwich": [
+    {
+      "name": "Tandoori Paneer Sandwich",
+      "display_name": "Tandoori Paneer",
+      "amount": 109
+    },
+    {
+      "name": "Classic Veg Sandwich",
+      "display_name": "Classic Veg",
+      "amount": 109
+    },
+    {
+      "name": "Cheese chilli Sandwich",
+      "display_name": "Cheese chilli",
+      "amount": 79
+    },
+    {
+      "name": "Chocolate Sandwich",
+      "display_name": "Chocolate",
+      "amount": 79
+    },
+    {
+      "name": "Corn Cheese Sandwich",
+      "display_name": "Corn Cheese",
+      "amount": 69
+    }
+  ]
+}

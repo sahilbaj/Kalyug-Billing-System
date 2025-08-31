@@ -1,0 +1,39 @@
+{
+  "chinese": [
+    {
+      "name": "Manchurian",
+      "display_name": "Manchurian",
+      "amount": 60
+    },
+    {
+      "name": "Fried Rice",
+      "display_name": "Fried Rice",
+      "amount": 60
+    },
+    {
+      "name": "Schewan Rice",
+      "display_name": "Schewan Rice",
+      "amount": 70
+    },
+    {
+      "name": "Manchurian Rice",
+      "display_name": "Manchurian Rice",
+      "amount": 70
+    },
+    {
+      "name": "Hakka Noodles",
+      "display_name": "Hakka Noodles",
+      "amount": 50
+    },
+    {
+      "name": "Schewan Noodles",
+      "display_name": "Schewan Noodles",
+      "amount": 60
+    },
+    {
+      "name": "Manchurian Noodles",
+      "display_name": "Manchurian Noodles",
+      "amount": 70
+    }
+  ]
+}

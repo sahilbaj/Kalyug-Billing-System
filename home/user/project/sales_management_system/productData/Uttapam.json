@@ -1,0 +1,19 @@
+{
+  "uttapam": [
+    {
+      "name": "Onion Uttapam",
+      "display_name": "Onion Uttapam",
+      "amount": 60
+    },
+    {
+      "name": "Tomato Uttapam",
+      "display_name": "Tomato Uttapam",
+      "amount": 60
+    },
+    {
+      "name": "Onion Tomato Uttapam",
+      "display_name": "Onion Tomato Uttapam",
+      "amount": 70
+    }
+  ]
+}

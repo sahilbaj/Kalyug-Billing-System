@@ -1,0 +1,29 @@
+{
+  "pizza": [
+    {
+      "name": "Onion Capsicum Pizza",
+      "display_name": "Onion Capsicum",
+      "amount": 109
+    },
+    {
+      "name": "Fresh Farm Pizza",
+      "display_name": "Fresh Farm",
+      "amount": 109
+    },
+    {
+      "name": "Corn Cheese Pizza",
+      "display_name": "Corn Cheese",
+      "amount": 149
+    },
+    {
+      "name": "Devil Pizza",
+      "display_name": "Devil",
+      "amount": 199
+    },
+    {
+      "name": "Tandoori Paneer Pizza",
+      "display_name": "Tandoori Paneer",
+      "amount": 199
+    }
+  ]
+}

@@ -1,0 +1,24 @@
+{
+  "fries": [
+    {
+      "name": "Salted Fries",
+      "display_name": "Salted Fries",
+      "amount": 50
+    },
+    {
+      "name": "Peri Peri Fries",
+      "display_name": "Peri Peri Fries",
+      "amount": 60
+    },
+    {
+      "name": "Cheese Masala Fries",
+      "display_name": "Cheese Fries",
+      "amount": 90
+    },
+    {
+      "name": "Potato Tornado",
+      "display_name": "Potato Tornado",
+      "amount": 50
+    }
+  ]
+}

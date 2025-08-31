@@ -1,0 +1,34 @@
+{
+  "pavBhaji": [
+    {
+      "name": "Plain Pav Bhaji",
+      "display_name": "Plain",
+      "amount": 80
+    },
+    {
+      "name": "Paneer Pav Bhaji",
+      "display_name": "Paneer",
+      "amount": 100
+    },
+    {
+      "name": "Cheese Pav Bhaji",
+      "display_name": "Cheese",
+      "amount": 100
+    },
+    {
+      "name": "Masala Pav Bhaji",
+      "display_name": "Masala",
+      "amount": 110
+    },
+    {
+      "name": "Extra Pav",
+      "display_name": "Extra Pav",
+      "amount": 10
+    },
+    {
+      "name": "Pulao",
+      "display_name": "Pulao",
+      "amount": 80
+    }
+  ]
+}
