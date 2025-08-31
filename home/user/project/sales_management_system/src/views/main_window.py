@@ -175,11 +175,6 @@ class MainWindow:
         tables_menu.add_separator()
         tables_menu.add_command(label="Refresh", command=self.refresh_all_data, accelerator="F5")
 
-        # Settings menu (Add this new menu)
-        settings_menu = tk.Menu(menubar, tearoff=0)
-        menubar.add_cascade(label="Settings", menu=settings_menu)
-        settings_menu.add_command(label="🖨️ Printer Configuration", command=lambda: self.receipt_manager.configure_printer(self.root))
-
     def setup_tables_panel(self, parent: ttk.Frame) -> None:
         """Setup the tables management panel with fixed 15 tables"""
         tables_frame = ttk.LabelFrame(parent, text="🍽️ Tables (15 Available)", padding="10")
